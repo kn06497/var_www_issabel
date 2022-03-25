@@ -66,9 +66,6 @@ function _moduleContent(&$smarty, $module_name)
     }
 
     switch (getParameter('action')) {
-    case 'xml':
-        $h = 'xmlFile';
-        break;
     case 'download':
         $h = 'downloadFile';
         break;
@@ -244,19 +241,10 @@ function reportMonitoring($smarty, $module_name, $local_templates_dir, &$pDB, $p
                         'namefile'  =>  $arrTmp[7],
                         'rawmode'   =>  'yes',
                     );
-                    $xmlparams = array(
-                        'menu'      =>  $module_name,
-                        'action'    =>  'xml',
-                        'id'        =>  $value['uniqueid'],
-                        'namefile'  =>  $arrTmp[7],
-                        'rawmode'   =>  'yes',
-                    );
                     $recordingLink = "<a title=\"$esc_recfile\" href=\"javascript:popUp('index.php?".urlencode(http_build_query($urlparams)."',350,100);")."\">"._tr("Listen")."</a>&nbsp;";
 
                     $urlparams['action'] = 'download';
-                    $recordingLink .= "<a title=\"$esc_recfile\" href='?".http_build_query($urlparams)."' >"._tr("Download")."</a>&nbsp;";
-
-                    //$recordingLink .= "<a title=\"$esc_recfile\" href='?".http_build_query($xmlparams)."' >"._tr("XML File")."</a>";
+                    $recordingLink .= "<a title=\"$esc_recfile\" href='?".http_build_query($urlparams)."' >"._tr("Download")."</a>";
                 }
             } else {
                 $recordingLink = '';
@@ -396,62 +384,6 @@ function downloadFile($smarty, $module_name, $local_templates_dir, &$pDB, $pACL,
     header("Content-Disposition: attachment; filename=" . basename($filebyUid['fullpath']));
     header("Content-Transfer-Encoding: binary");
     header("Content-length: " . filesize($filebyUid['fullpath']));
-    fpassthru($fp);
-    fclose($fp);
-}
-
-function xmlFile($smarty, $module_name, $local_templates_dir, &$pDB, $pACL,
-    $arrConf, $user, $extension)
-{
-    $record = getParameter("id");
-    $namefile = getParameter('namefile');
-    if (is_null($record) || !preg_match('/^[[:digit:]]+\.[[:digit:]]+$/', $record)) {
-        // Missing or invalid uniqueid
-        Header('HTTP/1.1 404 Not Found');
-        die("<b>404 "._tr("no_file")." </b>");
-    }
-
-    $pMonitoring = new paloSantoMonitoring($pDB);
-    if (!hasModulePrivilege($user, $module_name, 'downloadany')) {
-        if (!$pMonitoring->recordBelongsToUser($record, $extension)) {
-            Header('HTTP/1.1 403 Forbidden');
-            die("<b>403 "._tr("You are not authorized to download this file")." </b>");
-        }
-    }
-
-    // Check record is valid and points to an actual file
-    $filebyUid = $pMonitoring->getAudioByUniqueId($record, $namefile);
-    if (is_null($filebyUid) || count($filebyUid) <= 0) {
-        // Uniqueid does not point to a record with specified file
-        Header('HTTP/1.1 404 Not Found');
-        die("<b>404 "._tr("no_file")." </b>");
-    }
-    if ($filebyUid['deleted']) {
-        // Specified file has been deleted
-        Header('HTTP/1.1 410 Gone');
-        die("<b>410 "._tr("no_file")." </b>");
-    }
-    if (is_null($filebyUid['fullpath']) || is_null($filebyUid['mimetype'])) {
-        Header('HTTP/1.1 404 Not Found');
-        die("<b>404 "._tr("no_file")." </b>");
-    }
-
-    // Actually open and transmit the file
-    $filebyUid['fullpath'] = str_replace("mp3", "xml", $filebyUid['fullpath']);
-    $fp = fopen($filebyUid['fullpath'], 'rb');
-    if (!$fp) {
-        Header('HTTP/1.1 404 Not Found');
-        die("<b>404 "._tr("no_file")." </b>");
-    }
-    header("Pragma: public");
-    header("Expires: 0");
-    header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
-    header("Cache-Control: public");
-    header("Content-Description: xml file");
-    header("Content-Type: text/xml");
-    header("Content-Disposition: attachment; filename=" . basename($filebyUid['fullpath']));
-    header("Content-Transfer-Encoding: binary");
-    //header("Content-length: " . filesize($filebyUid['fullpath']));
     fpassthru($fp);
     fclose($fp);
 }
